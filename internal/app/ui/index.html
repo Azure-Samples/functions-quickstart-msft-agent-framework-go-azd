@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NASA Today — Built with Go on Azure Functions using Microsoft Agent Framework ⚡</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --border: #e2e6ee;
+      --border-strong: #cfd6e2;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --user: #0969da;
+      --user-hover: #0850ac;
+      --assistant: #ffffff;
+      --tool: #eef2ff;
+      --tool-text: #3730a3;
+      --danger: #d1242f;
+      --accent: #1a7f5a;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+
+    header {
+      padding: 0 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 56px;
+    }
+    header h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--text); letter-spacing: -0.01em; line-height: 1.2; }
+    header .brand { display: flex; flex-direction: column; gap: 2px; }
+    header .tagline { color: var(--muted); font-size: 11px; letter-spacing: 0.01em; }
+    header .cid { color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    header .spacer { flex: 1; }
+    header button#clear {
+      background: transparent; color: var(--muted); border: 1px solid var(--border-strong);
+      border-radius: 6px; padding: 5px 12px; cursor: pointer; font: inherit; font-size: 13px;
+      transition: all 0.15s ease;
+    }
+    header button#clear:hover { color: var(--danger); border-color: var(--danger); background: rgba(209, 36, 47, 0.04); }
+
+    /* Underline tabs */
+    .tabs { display: flex; gap: 4px; height: 100%; align-items: stretch; }
+    .tabs button {
+      background: transparent; border: none; color: var(--muted);
+      padding: 0 16px; cursor: pointer; font: inherit; font-size: 14px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .tabs button:hover { color: var(--text); }
+    .tabs button.active { color: var(--user); border-bottom-color: var(--user); font-weight: 600; }
+
+    main { display: flex; flex-direction: column; height: calc(100vh - 56px - 34px); }
+
+    .disclaimer {
+      padding: 8px 20px; height: 34px;
+      background: #fff8e6; color: #7a5b00;
+      border-bottom: 1px solid #f2e2b3;
+      font-size: 12.5px; line-height: 18px;
+      display: flex; align-items: center;
+    }
+    .view { display: none; height: 100%; flex-direction: column; }
+    .view.active { display: flex; }
+
+    /* Chat */
+    #log { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 780px; padding: 10px 14px; border-radius: 10px; white-space: pre-wrap; word-wrap: break-word; }
+    .msg.user { background: var(--user); color: #fff; align-self: flex-end; }
+    .msg.assistant { background: var(--panel); border: 1px solid var(--border); align-self: flex-start; box-shadow: var(--shadow); }
+    .msg.error { background: rgba(209, 36, 47, 0.06); border: 1px solid var(--danger); color: var(--danger); align-self: flex-start; }
+
+    .tool-chip {
+      display: inline-flex; align-items: center; gap: 6px; margin: 4px 0;
+      padding: 3px 10px; border-radius: 12px;
+      background: var(--tool); color: var(--tool-text);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+      border: 1px solid #dde2f7;
+    }
+    .tool-chip.done::before { content: "✓"; color: var(--accent); font-weight: 700; }
+    .tool-chip::before { content: "⚙"; }
+
+    .tool-card {
+      margin: 8px 0; padding: 14px; border-radius: 10px;
+      background: var(--panel); border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .tool-card h4 { margin: 0 0 4px; font-size: 15px; color: var(--text); font-weight: 600; }
+    .tool-card .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .tool-card p { margin: 8px 0 0; color: var(--text); }
+    .tool-card img { max-width: 100%; max-height: 340px; border-radius: 8px; display: block; margin: 10px 0 0; background: #eef2f7; }
+    .tool-card a { color: var(--user); text-decoration: none; }
+    .tool-card a:hover { text-decoration: underline; }
+    .tool-card ul.neo { list-style: none; padding: 0; margin: 8px 0 0; }
+    .tool-card ul.neo li {
+      padding: 8px 10px; border-radius: 6px; background: #f6f8fb;
+      margin: 6px 0; font-size: 13px; border: 1px solid var(--border);
+    }
+    .tool-card ul.neo li.hazard { border-left: 3px solid var(--danger); }
+    .tool-card .gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .tool-card .gallery img { max-width: 220px; max-height: 220px; margin: 0; }
+
+    footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; gap: 10px; background: var(--panel);
+    }
+    #input {
+      flex: 1; background: var(--panel); color: var(--text);
+      border: 1px solid var(--border-strong); border-radius: 8px;
+      padding: 10px 12px; font: inherit; resize: none;
+      min-height: 44px; max-height: 200px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    #input:focus { outline: none; border-color: var(--user); box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12); }
+    #send {
+      background: var(--user); color: white; border: 0; border-radius: 8px;
+      padding: 0 20px; cursor: pointer; font-weight: 600; font: inherit;
+      transition: background 0.15s ease;
+    }
+    #send:hover:not(:disabled) { background: var(--user-hover); }
+    #send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Per-view subtitle: names the MAF / Functions feature the view demonstrates. */
+    .view-subtitle {
+      color: var(--text); font-size: 14px; font-weight: 500;
+      padding: 12px 20px;
+      background: linear-gradient(90deg, rgba(9, 105, 218, 0.08), rgba(9, 105, 218, 0.02));
+      border-bottom: 1px solid var(--border);
+      border-left: 3px solid var(--user);
+    }
+    .view-subtitle::before {
+      content: "⚡ ";
+      color: var(--user);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+    #chat-view .view-subtitle { margin: 0; }
+
+    /* Brief view */
+    #brief-view { padding: 0; overflow-y: auto; }
+    #brief-view > .view-subtitle { margin-bottom: 20px; }
+    #brief-view .brief-toolbar,
+    #brief-view #brief-content { margin-left: 20px; margin-right: 20px; }
+    #brief-view #brief-content { padding-bottom: 20px; }
+    .brief-toolbar {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 20px;
+      padding: 12px 14px; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+    .brief-toolbar button {
+      background: var(--user); color: white; border: 0;
+      border-radius: 6px; padding: 6px 14px; cursor: pointer; font: inherit;
+      transition: background 0.15s ease;
+    }
+    .brief-toolbar button:hover { background: var(--user-hover); }
+    .brief-toolbar .stamp { color: var(--muted); font-size: 12px; }
+    .brief-toolbar #brief-load { margin-left: auto; }
+    .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .brief-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px; box-shadow: var(--shadow);
+    }
+    .brief-card h2 {
+      margin: 0 0 8px; font-size: 12px; font-weight: 600;
+      color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .brief-card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; color: var(--text); }
+    .brief-card p { margin: 0; color: var(--text); }
+    .brief-card img { max-width: 100%; border-radius: 8px; margin-top: 12px; background: #eef2f7; display: block; }
+    .brief-loading { color: var(--muted); font-style: italic; padding: 40px; text-align: center; }
+    .brief-error { color: var(--danger); padding: 16px; border: 1px solid var(--danger); border-radius: 8px; background: rgba(209, 36, 47, 0.04); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>NASA Today</h1>
+      <span class="tagline">Built with Go on Azure Functions using Microsoft Agent Framework ⚡</span>
+    </div>
+    <div class="tabs">
+      <button id="tab-brief" class="active" data-view="brief-view">Daily Brief</button>
+      <button id="tab-chat" data-view="chat-view">Chat</button>
+    </div>
+    <span class="cid" id="cid-wrap">conversation: <span id="cid"></span></span>
+    <span class="spacer"></span>
+    <button id="clear" title="Delete this conversation and start fresh">Clear</button>
+  </header>
+  <div class="disclaimer" role="note">
+    ⚠ AI-generated summaries from live NASA data. May contain inaccuracies — verify anything important against the original source.
+  </div>
+  <main>
+    <div id="chat-view" class="view">
+      <div class="view-subtitle">One MAF agent, three tools, streamed over Functions HTTP streaming.</div>
+      <div id="log"></div>
+      <footer>
+        <textarea id="input" placeholder="Ask about today's Astronomy Picture of the Day, nearby asteroids, or Mars rover photos..." rows="1"></textarea>
+        <button id="send">Send</button>
+      </footer>
+    </div>
+    <div id="brief-view" class="view active">
+      <div class="view-subtitle">Multi-agent pipeline: an editor calls four specialist agents as tools.</div>
+      <div class="brief-toolbar">
+        <span class="stamp" id="brief-stamp"></span>
+        <button id="brief-load">Regenerate</button>
+      </div>
+      <div id="brief-content"></div>
+    </div>
+  </main>
+
+  <script>
+    // Server-supplied config. html/template auto-escapes ChatBaseURL.
+    // {{ .ChatBaseURL }} is rendered inside a JS string context by
+    // html/template, which auto-escapes special chars. We use its
+    // built-in JS-string quoting by simply placing the value inside
+    // regular double quotes — the template engine does the rest.
+    const CHAT_BASE_URL = "{{ .ChatBaseURL }}";
+    const BRIEF_BASE_URL = "{{ .BriefBaseURL }}";
+    console.log("UI build v3 loaded"); // marker to verify new JS is running
+
+    // Conversation ID: kept in the URL fragment so a refresh preserves
+    // history and the URL is shareable within the same browser.
+    let convId = location.hash.slice(1);
+    if (!convId) {
+      convId = crypto.randomUUID();
+      history.replaceState(null, "", "#" + convId);
+    }
+    document.getElementById("cid").textContent = convId;
+
+    const log = document.getElementById("log");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const clearBtn = document.getElementById("clear");
+
+    function addUser(text) {
+      const el = document.createElement("div");
+      el.className = "msg user";
+      el.textContent = text;
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function startAssistant() {
+      const el = document.createElement("div");
+      el.className = "msg assistant";
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+      // Track tool chips by callId so we can flip them from pending -> done.
+      return { el, tools: new Map() };
+    }
+
+    function appendText(bubble, text) {
+      // textContent (never innerHTML) — server output is untrusted LLM text.
+      bubble.el.appendChild(document.createTextNode(text));
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function appendTool(bubble, callId, name, args) {
+      console.log("appendTool", { callId, name, args });
+      const chip = document.createElement("div");
+      chip.className = "tool-chip";
+      chip.textContent = `${name}(${args || ""})`;
+      bubble.el.appendChild(chip);
+      bubble.tools.set(callId, chip);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function completeTool(bubble, callId, result, error) {
+      console.log("completeTool ENTER", { callId, hasResult: result !== undefined, error });
+      const chip = bubble.tools.get(callId);
+      if (!chip) { console.log("completeTool: no chip for callId", callId, "known:", [...bubble.tools.keys()]); return; }
+      chip.classList.add("done");
+      if (error) {
+        chip.title = "error: " + error;
+        return;
+      }
+      // Some MAF providers serialize the tool result to a JSON string
+      // before emitting FunctionResultContent (so the model can
+      // consume it). Try to re-parse so our structured renderers get
+      // an object to work with.
+      let parsed = result;
+      if (typeof result === "string") {
+        try { parsed = JSON.parse(result); } catch (_) { /* keep string */ }
+      }
+      console.log("tool_result", { callId, result, parsed, type: typeof parsed });
+      const card = renderToolCard(chip, parsed);
+      if (card) {
+        chip.insertAdjacentElement("afterend", card);
+        console.log("card rendered", card);
+      } else if (typeof parsed === "string") {
+        chip.title = parsed;
+        console.log("no card matched; result was string");
+      } else if (parsed) {
+        chip.title = JSON.stringify(parsed);
+        console.log("no card matched; keys=", Object.keys(parsed));
+      } else {
+        console.log("no result payload");
+      }
+    }
+
+    // renderToolCard heuristically maps a structured tool result onto
+    // a rich card. Returning null falls back to the plain chip tooltip.
+    // We intentionally use textContent for all user-visible fields —
+    // never innerHTML — because the strings originate from an external
+    // API and possibly an LLM.
+    function renderToolCard(chip, r) {
+      if (!r || typeof r !== "object") return null;
+      const card = document.createElement("div");
+      card.className = "tool-card";
+
+      // APOD: single image + title + explanation.
+      if (r.media_type !== undefined || (r.url && r.title && r.explanation !== undefined)) {
+        const h = document.createElement("h4"); h.textContent = (r.title || "Astronomy Picture of the Day").replace(/\s+/g, " ").trim();
+        const copyright = (r.copyright || "").replace(/\s+/g, " ").trim();
+        const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = [r.date, copyright].filter(Boolean).join(" · ");
+        card.append(h, meta);
+        if (r.media_type === "image" && r.url) {
+          const a = document.createElement("a"); a.href = r.hdurl || r.url; a.target = "_blank"; a.rel = "noopener";
+          const img = document.createElement("img"); img.src = r.url; img.alt = r.title || "APOD";
+          a.appendChild(img); card.appendChild(a);
+        } else if (r.url) {
+          const a = document.createElement("a"); a.href = r.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = r.url;
+          card.appendChild(a);
+        }
+        if (r.explanation) {
+          const p = document.createElement("p"); p.textContent = r.explanation.replace(/\s+/g, " ").trim(); card.appendChild(p);
+        }
+        return card;
+      }
+
+      // NEO: list of asteroids.
+      if (Array.isArray(r.approaches)) {
+        const h = document.createElement("h4"); h.textContent = `Near Earth Objects (${r.element_count ?? r.approaches.length})`;
+        card.appendChild(h);
+        const ul = document.createElement("ul"); ul.className = "neo";
+        for (const a of r.approaches.slice(0, 10)) {
+          const li = document.createElement("li");
+          if (a.potentially_hazardous) li.classList.add("hazard");
+          const name = document.createElement("strong"); name.textContent = a.name;
+          li.appendChild(name);
+          const details = document.createElement("div");
+          const miss = a.miss_distance_km ? `miss ${Math.round(a.miss_distance_km).toLocaleString()} km` : "";
+          const vel = a.relative_velocity_kps ? `${a.relative_velocity_kps.toFixed(1)} km/s` : "";
+          const dia = a.diameter_max_meters ? `⌀ ${Math.round(a.diameter_min_meters ?? 0)}–${Math.round(a.diameter_max_meters)} m` : "";
+          const date = a.close_approach_date || "";
+          details.textContent = [date, miss, vel, dia].filter(Boolean).join(" · ") + (a.potentially_hazardous ? " · ⚠ hazardous" : "");
+          li.appendChild(details);
+          ul.appendChild(li);
+        }
+        card.appendChild(ul);
+        return card;
+      }
+
+      // Mars rover: gallery of photos.
+      if (Array.isArray(r.photos)) {
+        const first = r.photos[0];
+        const h = document.createElement("h4");
+        h.textContent = first ? `${first.rover || "Mars rover"} — sol ${first.sol ?? "?"} (${first.earth_date || ""})` : "Mars rover photos";
+        card.appendChild(h);
+        const gal = document.createElement("div"); gal.className = "gallery";
+        for (const p of r.photos.slice(0, 6)) {
+          if (!p.img_src) continue;
+          const a = document.createElement("a"); a.href = p.img_src; a.target = "_blank"; a.rel = "noopener";
+          const img = document.createElement("img"); img.src = p.img_src; img.alt = `${p.rover || ""} ${p.camera || ""}`.trim() || "Mars photo";
+          a.appendChild(img); gal.appendChild(a);
+        }
+        card.appendChild(gal);
+        return card;
+      }
+      return null;
+    }
+
+    function addError(text) {
+      const el = document.createElement("div");
+      el.className = "msg error";
+      el.textContent = text;
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Parse SSE frames off a streaming fetch response body. We don't
+    // use EventSource because that's GET-only; POST + streaming
+    // response = read the body chunk-by-chunk and split on "\n\n".
+    async function streamSSE(response, onFrame) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n\n")) !== -1) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          if (!raw.trim()) continue;
+          let event = "text", data = "";
+          for (const line of raw.split("\n")) {
+            if (line.startsWith("event:")) event = line.slice(6).trim();
+            else if (line.startsWith("data:")) data += line.slice(5).trim();
+          }
+          try { onFrame(event, data ? JSON.parse(data) : {}); }
+          catch (e) { console.warn("bad SSE frame", raw, e); }
+        }
+      }
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      input.style.height = "auto";
+      sendBtn.disabled = true;
+
+      addUser(text);
+      const bubble = startAssistant();
+
+      try {
+        const resp = await fetch(`${CHAT_BASE_URL}/${encodeURIComponent(convId)}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        if (!resp.ok) {
+          const t = await resp.text();
+          addError(`HTTP ${resp.status}: ${t}`);
+          return;
+        }
+        await streamSSE(resp, (event, payload) => {
+          console.log("SSE frame", event, payload);
+          switch (event) {
+            case "text":        appendText(bubble, payload.text || ""); break;
+            case "tool_call":   appendTool(bubble, payload.callId, payload.name, payload.arguments); break;
+            case "tool_result": completeTool(bubble, payload.callId, payload.result, payload.error); break;
+            case "error":       addError(payload.error || "unknown error"); break;
+            case "done":        /* end of turn */ break;
+          }
+        });
+      } catch (e) {
+        addError(String(e));
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const resp = await fetch(`${CHAT_BASE_URL}/${encodeURIComponent(convId)}`);
+        if (resp.status === 404) return;
+        if (!resp.ok) return;
+        // We intentionally don't render prior history here — the MAF
+        // Session's internal message schema is not part of this
+        // sample's public contract. Extending the UI to render it
+        // would couple the frontend to MAF internals; better to keep
+        // that opaque and add a purpose-built history endpoint later
+        // if needed.
+      } catch (_) {}
+    }
+
+    async function clearConversation() {
+      await fetch(`${CHAT_BASE_URL}/${encodeURIComponent(convId)}`, { method: "DELETE" });
+      log.innerHTML = "";
+      convId = crypto.randomUUID();
+      history.replaceState(null, "", "#" + convId);
+      document.getElementById("cid").textContent = convId;
+    }
+
+    sendBtn.addEventListener("click", send);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(200, input.scrollHeight) + "px";
+    });
+    clearBtn.addEventListener("click", clearConversation);
+
+    // ─── Tab switching ────────────────────────────────────────────────
+    const views = {
+      "chat-view": document.getElementById("chat-view"),
+      "brief-view": document.getElementById("brief-view"),
+    };
+    document.querySelectorAll(".tabs button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        for (const v of Object.values(views)) v.classList.remove("active");
+        views[btn.dataset.view].classList.add("active");
+        const isChat = btn.dataset.view === "chat-view";
+        document.getElementById("cid-wrap").style.visibility = isChat ? "" : "hidden";
+        clearBtn.style.display = isChat ? "" : "none";
+        if (btn.dataset.view === "brief-view" && !briefLoaded) {
+          loadBrief();
+          briefLoaded = true;
+        }
+      });
+    });
+
+    // ─── Daily Brief ──────────────────────────────────────────────────
+    let briefLoaded = false;
+    const briefContent = document.getElementById("brief-content");
+    const briefStamp = document.getElementById("brief-stamp");
+    document.getElementById("brief-load").addEventListener("click", loadBrief);
+
+    // Daily Brief is the default view; hide the chat conversation-id chip
+    // and the Clear button (both chat-only), then kick off the initial
+    // brief fetch immediately.
+    document.getElementById("cid-wrap").style.visibility = "hidden";
+    clearBtn.style.display = "none";
+    loadBrief();
+    briefLoaded = true;
+
+    async function loadBrief() {
+      briefContent.innerHTML = '<div class="brief-loading">Generating today\'s briefing… this can take ~30s.</div>';
+      briefStamp.textContent = "";
+      try {
+        const resp = await fetch(`${BRIEF_BASE_URL}/today`);
+        if (!resp.ok) {
+          const t = await resp.text();
+          briefContent.innerHTML = "";
+          const err = document.createElement("div");
+          err.className = "brief-error";
+          err.textContent = `HTTP ${resp.status}: ${t}`;
+          briefContent.appendChild(err);
+          return;
+        }
+        const brief = await resp.json();
+        renderBrief(brief);
+      } catch (e) {
+        briefContent.innerHTML = "";
+        const err = document.createElement("div");
+        err.className = "brief-error";
+        err.textContent = String(e);
+        briefContent.appendChild(err);
+      }
+    }
+
+    function renderBrief(b) {
+      briefStamp.textContent = "Generated: " + b.generatedAt;
+      briefContent.innerHTML = "";
+      const grid = document.createElement("div");
+      grid.className = "brief-grid";
+      grid.appendChild(briefCard("Headline (sun & space weather)", b.headline));
+      grid.appendChild(briefCard("EarthWatch", b.earthWatch));
+      grid.appendChild(briefCard("Photo of the Day", b.photoOfDay));
+      grid.appendChild(briefCard("Did You Know", b.didYouKnow));
+      briefContent.appendChild(grid);
+    }
+
+    function briefCard(section, data) {
+      const card = document.createElement("div");
+      card.className = "brief-card";
+      const h2 = document.createElement("h2");
+      h2.textContent = section;
+      card.appendChild(h2);
+      const h3 = document.createElement("h3");
+      h3.textContent = data.title || "Unavailable";
+      card.appendChild(h3);
+      const p = document.createElement("p");
+      p.textContent = data.body || "Not available today.";
+      card.appendChild(p);
+      if (data.imageUrl && /^https?:\/\//i.test(data.imageUrl)) {
+        const img = document.createElement("img");
+        img.src = data.imageUrl;
+        img.alt = data.title || "";
+        img.loading = "lazy";
+        img.onerror = () => img.remove();
+        card.appendChild(img);
+      }
+      return card;
+    }
+
+    loadHistory();
+    input.focus();
+  </script>
+</body>
+</html>
