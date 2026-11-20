@@ -1,0 +1,11 @@
+# This descriptor drives template package creation in the packaging pipeline.
+schemaVersion: 1
+identity: Azure.Functions.Templates.AgentFrameworkMultiAgentGo
+description: Create a Go Azure Functions app for Agent Framework Multi-Agent, with Bicep infrastructure for deployment using
+  azd.
+projects:
+- name: Azure Functions Agent Framework Multi-Agent (Go)
+  shortName: functions-quickstart-go-agent-framework-multi-agent
+  root: .
+  stack: go
+  language: Go
